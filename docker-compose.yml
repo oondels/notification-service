@@ -1,0 +1,16 @@
+services:
+  notification-service:
+    build: .
+    container_name: notification-service
+    ports:
+      - "6752:6752"
+    env_file:
+      - .env
+    environment:
+      - DEV_ENV=production
+    networks:
+      - dass_private
+
+networks:
+  dass_private:
+    external: true
