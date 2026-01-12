@@ -16,7 +16,7 @@ notificationRoute.post("/", async (req: Request, res: Response, next: NextFuncti
     const payload = req.body
 
     const mailOptionsSchema = z.object({
-      to: z.string(),
+      to: z.union([z.string(), z.array(z.string())]),
       subject: z.string(),
       title: z.string(),
       message: z.string(),
