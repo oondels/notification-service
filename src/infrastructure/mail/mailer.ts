@@ -13,44 +13,51 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const formatMessage = (value: string) => escapeHtml(value).replace(/\n/g, "<br />");
 
 const sendEmail = async ({ to, subject, title, message, link, application }: MailOptions) => {
+  const safeTitle = escapeHtml(title);
+  const safeMessage = formatMessage(message);
+  const safeLink = link ? escapeHtml(link) : "";
+  const safeReference = application ? escapeHtml(application) : "";
+
   const mailOptions = {
     to,
     subject,
     html: `
-     <div style="color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 15px; border-radius: 12px; border: 1px solid rgb(224, 224, 224);">
-      <div style="text-align: center; margin-bottom: 25px;">
-        <h1 style="color: #B22222; font-size: 28px; margin: 0; font-weight: bold; letter-spacing: 1px;">
-          Dass Automação
-        </h1>
-        <p style="color: #555; font-size: 14px; margin-top: 8px;">
-          Sistema de Notificações ${application ?? 'SEST'}
-        </p>
+    <div style="font-family: Arial, Helvetica, sans-serif; color: #1f2937; line-height: 1.6; max-width: 680px; margin: 0 auto; padding: 20px; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px;">
+      <div style="margin-bottom: 20px;">
+        <h1 style="margin: 0; font-size: 20px; color: #111827;">Notificação</h1>
       </div>
 
-      <div style="background-color: #fff5f5; padding: 25px; border-radius: 10px; border: 1px solid #f0c7c7;">
-        <h2 style="color: #B22222; font-size: 22px; margin: 0 0 15px; text-align: center; border-bottom: 1px solid #f4cccc; padding-bottom: 10px;">
-          ${title}
-        </h2>
+      <div style="padding: 18px; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+        <p style="margin: 0 0 6px; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em;">Título</p>
+        <h2 style="margin: 0 0 18px; font-size: 22px; color: #111827;">${safeTitle}</h2>
 
-        <p style="font-size: 16px; color: #444; text-align: center; margin-bottom: 20px;">
-          ${message}
-        </p>
+        <p style="margin: 0 0 6px; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em;">Mensagem</p>
+        <p style="margin: 0; font-size: 16px; color: #374151;">${safeMessage}</p>
 
-        ${link ? `
-          <div style="text-align: center; margin-top: 20px;">
-            <a href="${link}" target="_blank" style="background-color: #B22222; color: #ffffff; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-size: 16px; display: inline-block;">
-              Ver detalhes
-            </a>
-          </div>
-        ` : ''}
+        ${safeReference ? `<p style="margin: 16px 0 0; font-size: 12px; color: #6b7280;"><strong>Referência:</strong> ${safeReference}</p>` : ""}
       </div>
 
-      <div style="text-align: center; margin-top: 40px; color: #999; font-size: 13px;">
-        <p>Esta é uma mensagem automática do sistema <strong>Dass Automação Santo Estêvão</strong>.</p>
-        <p>Em caso de dúvidas, entre em contato pelo e-mail: <a href="mailto:hendrius.santana@grupodass.com.br" style="color: #B22222; text-decoration: none;">Dass Suporte</a></p>
-        <p style="margin-top: 10px;">Por favor, não responda a este e-mail diretamente.</p>
+      ${safeLink ? `
+        <div style="margin-top: 16px;">
+          <a href="${safeLink}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #111827; color: #ffffff; text-decoration: none; padding: 10px 14px; border-radius: 6px; font-size: 14px;">
+            Abrir link relacionado
+          </a>
+        </div>
+      ` : ""}
+
+      <div style="margin-top: 22px; font-size: 12px; color: #6b7280;">
+        <p style="margin: 0;">Mensagem automática. Não responda este e-mail.</p>
       </div>
     </div>
       `,
