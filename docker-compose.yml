@@ -9,8 +9,8 @@ services:
     environment:
       - DEV_ENV=production
     networks:
-      - dass_private
+      - hendrius_network
 
 networks:
-  dass_private:
+  hendrius_network:
     external: true
