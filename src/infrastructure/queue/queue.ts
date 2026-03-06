@@ -72,7 +72,7 @@ async function getPublishChannel() {
       resetPublishChannel();
     });
 
-    channel.on('error', (error) => {
+    channel.on('error', (error: Error) => {
       logger.error("Queue", `Erro no canal de publicação: ${error.message}`);
     });
 
@@ -147,28 +147,29 @@ export async function consume<T>(queueName: string, handler: (msg: T) => Promise
       }
 
       const conn = await connectQueue();
-      channel = await conn.createChannel();
+      const consumerChannel = await conn.createChannel();
+      channel = consumerChannel;
 
-      await assertQueueTopology(channel, queueName);
-      await channel.prefetch(1);
+      await assertQueueTopology(consumerChannel, queueName);
+      await consumerChannel.prefetch(1);
 
-      channel.on('close', () => {
+      consumerChannel.on('close', () => {
         logger.warn("Queue", `Canal de consumo da fila ${queueName} foi fechado.`);
       });
 
-      channel.on('error', (error) => {
+      consumerChannel.on('error', (error: Error) => {
         logger.error("Queue", `Erro no canal de consumo da fila ${queueName}: ${error.message}`);
       });
 
-      await channel.consume(queueName, async (raw: ConsumeMessage | null) => {
-        if (!raw || !channel) return;
+      await consumerChannel.consume(queueName, async (raw: ConsumeMessage | null) => {
+        if (!raw) return;
 
         let data: T;
         try {
           data = JSON.parse(raw.content.toString()) as T;
         } catch (error) {
           logger.error("Queue", `Mensagem inválida na fila ${queueName}. Erro: ${error}`);
-          channel.nack(raw, false, false);
+          consumerChannel.nack(raw, false, false);
           return;
         }
 
@@ -180,7 +181,7 @@ export async function consume<T>(queueName: string, handler: (msg: T) => Promise
 
         try {
           await handler(data);
-          channel.ack(raw);
+          consumerChannel.ack(raw);
           logger.info("Queue", `Mensagem ${messageId} processada com sucesso.`);
         } catch (error) {
           if (retryCount < config.queueMaxRetryAttempts) {
@@ -202,11 +203,11 @@ export async function consume<T>(queueName: string, handler: (msg: T) => Promise
             };
 
             try {
-              channel.sendToQueue(topology.retry, Buffer.from(raw.content), retryOptions);
-              channel.ack(raw);
+              consumerChannel.sendToQueue(topology.retry, Buffer.from(raw.content), retryOptions);
+              consumerChannel.ack(raw);
             } catch (retryError) {
               logger.error("Queue", `Falha ao republicar mensagem ${messageId} para retry: ${retryError}`);
-              channel.nack(raw, false, true);
+              consumerChannel.nack(raw, false, true);
               return;
             }
 
@@ -221,7 +222,7 @@ export async function consume<T>(queueName: string, handler: (msg: T) => Promise
             "Queue",
             `Mensagem ${messageId} excedeu o limite de retries (${config.queueMaxRetryAttempts}) e será enviada para DLQ. Erro: ${error}`
           );
-          channel.nack(raw, false, false);
+          consumerChannel.nack(raw, false, false);
         }
       });
 

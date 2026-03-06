@@ -1,10 +1,11 @@
 import amqp from "amqplib";
+import { ChannelModel } from "amqplib";
 import { EventEmitter } from "events";
 import { config } from "../../config/dotenv";
 import logger from "../../utils/logger";
 
-let connection: amqp.Connection | null = null;
-let connectionPromise: Promise<amqp.Connection> | null = null;
+let connection: ChannelModel | null = null;
+let connectionPromise: Promise<ChannelModel> | null = null;
 let connected = false;
 let reconnecting = false;
 let reconnectAttempts = 0;
@@ -12,7 +13,7 @@ const queueEvents = new EventEmitter();
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-function emitConnected(conn: amqp.Connection) {
+function emitConnected(conn: ChannelModel) {
   queueEvents.emit('connected', conn);
 }
 
@@ -78,7 +79,7 @@ export async function connectQueue() {
   return connectionPromise;
 }
 
-export function onQueueConnected(listener: (conn: amqp.Connection) => void) {
+export function onQueueConnected(listener: (conn: ChannelModel) => void) {
   queueEvents.on('connected', listener);
 }
 
