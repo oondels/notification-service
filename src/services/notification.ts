@@ -2,6 +2,27 @@ import { MailOptions } from '../types/model';
 import sendEmail from '../infrastructure/mail/mailer';
 import { publish } from '../infrastructure/queue/queue';
 import logger from '../utils/logger';
+import { config } from '../config/dotenv';
+
+function resolveDelayInMs(payload: MailOptions): number {
+  if (payload.scheduleAt !== undefined) {
+    const scheduleAtMs = typeof payload.scheduleAt === 'string'
+      ? Date.parse(payload.scheduleAt)
+      : payload.scheduleAt;
+
+    if (!Number.isFinite(scheduleAtMs)) {
+      return 0;
+    }
+
+    return Math.max(0, scheduleAtMs - Date.now());
+  }
+
+  if (payload.scheduleFor !== undefined) {
+    return payload.scheduleFor;
+  }
+
+  return 0;
+}
 
 /**
  * Processa uma notificação por email
@@ -12,14 +33,10 @@ import logger from '../utils/logger';
 export async function handleNotification(payload: MailOptions, enqueue: boolean = true) {
   // Enfileira apenas se solicitado -> Via api (POST)
   if (enqueue) {
-    let delay = 0;
+    const delay = resolveDelayInMs(payload);
 
-    if (payload.scheduleFor) {
-      const now = Date.now()
-      delay = payload.scheduleFor
-
-      // Formato para arquivar em log
-      const scheduledFor = new Date(delay + now).toLocaleString('pt-BR', {
+    if (delay > 0) {
+      const scheduledFor = new Date(Date.now() + delay).toLocaleString('pt-BR', {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
@@ -28,13 +45,13 @@ export async function handleNotification(payload: MailOptions, enqueue: boolean 
         second: '2-digit',
         hour12: false
       });
-      logger.info("NotificationService", `Agendando notificação para: ${payload.to} -> ${scheduledFor.toString()}`);
 
-      console.log(`Delay : ${delay}`);
-
+      logger.info("NotificationService", `Agendando notificação para ${payload.to} em ${scheduledFor}`);
+    } else {
+      logger.info("NotificationService", `Enfileirando notificação imediata para ${payload.to}`);
     }
 
-    await publish('notifications', payload, delay);
+    await publish(config.queueName, payload, delay);
     return;
   }
 

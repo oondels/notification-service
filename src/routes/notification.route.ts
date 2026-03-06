@@ -13,33 +13,31 @@ notificationRoute.post("/", async (req: Request, res: Response, next: NextFuncti
       return
     }
 
-    const payload = req.body
-
     const mailOptionsSchema = z.object({
-      to: z.union([z.string(), z.array(z.string())]),
-      subject: z.string(),
-      title: z.string(),
-      message: z.string(),
-      link: z.string().optional(),
-      scheduleFor: z.number().optional(),
-      application: z.string().optional(),
-    });
+      to: z.union([z.string().email(), z.array(z.string().email()).nonempty()]),
+      subject: z.string().trim().min(1),
+      title: z.string().trim().min(1),
+      message: z.string().trim().min(1),
+      link: z.string().url().optional(),
+      scheduleFor: z.number().int().positive().optional(),
+      scheduleAt: z.union([z.number().int().positive(), z.string().datetime({ offset: true })]).optional(),
+      application: z.string().trim().min(1).optional(),
+    }).strict();
 
-    const validation = mailOptionsSchema.safeParse(payload);
+    const validation = mailOptionsSchema.safeParse(req.body);
 
     if (!validation.success) {
       res.status(400).json({
-        message: "Informações ausentes ou iválidas: ",
+        message: "Informações ausentes ou inválidas.",
         error: validation.error.errors
       })
       return
     }
 
-    await handleNotification(payload)
-    res.status(200).json({ message: "Notificação enviada com sucesso!" })
+    await handleNotification(validation.data)
+    res.status(202).json({ message: "Notificação recebida e enfileirada com sucesso!" })
     return
   } catch (error) {
     next(error)
   }
 })
-
